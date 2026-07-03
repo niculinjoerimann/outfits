@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>FITS</title>
+
+<!-- PWA / Homescreen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FITS">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#12121A">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%2312121A'/%3E%3Ctext x='90' y='128' font-family='Arial, sans-serif' font-size='104' font-weight='900' fill='%23FFB020' text-anchor='middle'%3EF%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%2312121A'/%3E%3Ctext x='90' y='128' font-family='Arial, sans-serif' font-size='104' font-weight='900' fill='%23FFB020' text-anchor='middle'%3EF%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* ---- Dark ("night tag") ---- */
+    --bg: #12121A;
+    --bg-elevated: #191923;
+    --bg-card: #1E1E29;
+    --line: #34333F;
+    --line-strong: #45434F;
+    --ink: #EDEAE2;
+    --ink-dim: #9C99A6;
+    --ink-faint: #625F6E;
+
+    --accent: #FFB020;       /* mustard stamp */
+    --accent-2: #5FD0C0;     /* teal stamp */
+    --accent-warn: #FF7A45;  /* coral stamp */
+    --danger: #FF5C5C;       /* red stamp */
+
+    --accent-soft: rgba(255,176,32,0.16);
+    --accent-2-soft: rgba(95,208,192,0.16);
+    --accent-warn-soft: rgba(255,122,69,0.16);
+    --danger-soft: rgba(255,92,92,0.16);
+
+    --overlay: rgba(10,10,14,0.62);
+    --radius: 12px;
+  }
+  html[data-theme="light"]{
+    /* ---- Light ("day tag") ---- */
+    --bg: #ECEAE2;
+    --bg-elevated: #F4F2EA;
+    --bg-card: #FFFFFF;
+    --line: #D9D4C6;
+    --line-strong: #C6C0AE;
+    --ink: #17171C;
+    --ink-dim: #625F68;
+    --ink-faint: #98939C;
+
+    --accent: #C97D00;
+    --accent-2: #1F8C7A;
+    --accent-warn: #D95A2B;
+    --danger: #C43B3B;
+
+    --accent-soft: rgba(201,125,0,0.12);
+    --accent-2-soft: rgba(31,140,122,0.12);
+    --accent-warn-soft: rgba(217,90,43,0.12);
+    --danger-soft: rgba(196,59,59,0.12);
+
+    --overlay: rgba(20,18,10,0.5);
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: env(safe-area-inset-bottom);
+    transition: background .25s ease, color .25s ease;
+  }
+  h1,h2,h3, .display{
+    font-family: 'Archivo Black', sans-serif;
+    letter-spacing: -0.01em;
+    margin: 0;
+    font-weight: 400;
+  }
+  .mono{ font-family: 'IBM Plex Mono', monospace; }
+  button{ font-family: inherit; }
+  ::-webkit-scrollbar{ display:none; }
+
+  #app{
+    max-width: 560px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: 96px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    position: sticky;
+    top:0;
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1.5px dashed var(--line-strong);
+    padding: env(safe-area-inset-top) 20px 0 20px;
+    transition: background .25s ease, border-color .25s ease;
+  }
+  .topbar-inner{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    padding: 16px 0 14px 0;
+    gap: 10px;
+  }
+  .brand-block{ display:flex; flex-direction:column; }
+  .brand{
+    font-family:'Archivo Black', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    display:inline-block;
+    transform: rotate(-1.5deg);
+    letter-spacing: 0.01em;
+  }
+  .brand-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5px;
+    color: var(--ink-faint);
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    font-weight:500;
+    margin-top: 3px;
+  }
+  .topbar-actions{ display:flex; align-items:center; gap: 12px; }
+
+  /* Theme toggle */
+  .theme-toggle{
+    width: 52px; height: 28px;
+    border-radius: 20px;
+    border: 1.5px solid var(--line-strong);
+    background: var(--bg-card);
+    position: relative;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    padding: 0 5px;
+    justify-content: space-between;
+  }
+  .theme-toggle .tt-icon{
+    font-size: 11px;
+    line-height:1;
+    color: var(--ink-faint);
+    z-index:1;
+  }
+  .theme-toggle .tt-knob{
+    position:absolute;
+    top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    transition: transform .22s cubic-bezier(.2,.8,.2,1), background .2s ease;
+  }
+  .theme-toggle.is-light .tt-knob{ transform: translateX(24px); }
+
+  .add-btn{
+    width:38px; height:38px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ink);
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 20px;
+    font-weight: 700;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: transform .15s ease;
+  }
+  .add-btn:active{ transform: scale(0.9) rotate(-6deg); }
+
+  /* ---------- Tabs content ---------- */
+  .view{ display:none; padding: 20px 20px 12px 20px; }
+  .view.active{ display:block; }
+
+  .section-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  /* ---------- Search bar ---------- */
+  .search-bar-wrap{ position: relative; margin-bottom: 18px; }
+  .search-bar-wrap svg{
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; stroke: var(--ink-faint); fill: none; stroke-width: 1.8;
+    pointer-events: none;
+  }
+  .search-input{
+    width: 100%;
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 14.5px;
+    padding: 12px 36px 12px 38px;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  .search-input::placeholder{ color: var(--ink-faint); }
+  .search-input:focus{ border-color: var(--accent); border-style: solid; }
+  .search-clear{
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--bg-elevated); border: 1px solid var(--line);
+    color: var(--ink-dim); font-size: 12px;
+    display: none; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .search-clear.show{ display:flex; }
+
+  /* ---------- Empty state ---------- */
+  .empty-state{ margin-top: 16vh; text-align:center; color: var(--ink-dim); padding: 0 30px; }
+  .empty-state .glyph{
+    width: 64px; height:64px; margin: 0 auto 16px auto;
+    border-radius: 50%;
+    border: 1.5px dashed var(--line-strong);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Archivo Black', sans-serif;
+    font-size: 24px;
+    color: var(--accent);
+  }
+  .empty-state h3{ font-size: 16.5px; color: var(--ink); margin-bottom: 6px; font-weight: 400; font-family:'Archivo Black', sans-serif; }
+  .empty-state p{ font-size: 13.5px; line-height: 1.5; color: var(--ink-dim); }
+
+  /* ---------- Wishlist grid / tag cards ---------- */
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 18px 14px; }
+  .card{
+    background: var(--bg-card);
+    border: 1.5px solid var(--line);
+    border-radius: 4px 4px 10px 10px;
+    overflow:visible;
+    position:relative;
+    animation: fadeUp .35s ease both;
+  }
+  @keyframes fadeUp{ from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform: translateY(0);} }
+  .tag-hole{
+    position:absolute; top:-7px; left:50%; transform:translateX(-50%);
+    width:13px; height:13px; border-radius:50%;
+    background: var(--bg);
+    border: 1.5px solid var(--line-strong);
+    z-index:3;
+  }
+  .card-img-wrap{
+    width:100%; aspect-ratio: 4/5;
+    background: var(--bg-elevated);
+    position:relative; overflow:hidden;
+    border-radius: 3px 3px 0 0;
+  }
+  .card-img-wrap img{
+    width:100%; height:100%; object-fit: cover;
+    filter: saturate(1.08) contrast(1.05);
+    display:block;
+  }
+  .card-img-wrap.noimg{ display:flex; align-items:center; justify-content:center; }
+  .card-img-wrap.noimg span{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .badge{
+    position:absolute; top:8px; left:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+    background: var(--overlay);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 20px;
+    border: 1px dashed rgba(255,255,255,0.4);
+    transform: rotate(-2deg);
+  }
+  .prio-dot{
+    position:absolute; top:11px; right:11px;
+    width:10px; height:10px; border-radius:50%;
+    box-shadow: 0 0 0 3px var(--overlay);
+  }
+  .prio-dot.high{ background: var(--danger); }
+  .prio-dot.mid{ background: var(--accent); }
+  .prio-dot.low{ background: var(--accent-2); }
+  .del-btn{
+    position:absolute; bottom:8px; right:8px;
+    width:24px; height:24px; border-radius:50%;
+    background: var(--overlay);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; font-size: 12px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .del-btn:active{ color: var(--danger); }
+
+  .card-body{ padding: 12px 11px 12px 11px; border-top: 1.5px dashed var(--line-strong); }
+  .card-brand{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); font-weight: 600; margin-bottom: 3px;
+  }
+  .card-name{
+    font-family:'Archivo Black', sans-serif;
+    font-size: 13.5px; line-height:1.25; margin-bottom: 7px; color: var(--ink);
+  }
+  .card-meta{
+    display:flex; align-items:center; justify-content: space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px; color: var(--ink-dim); margin-bottom: 6px;
+  }
+  .card-price{ font-weight:600; color: var(--ink); }
+  .card-note{
+    font-size: 11px; color: var(--ink-faint); line-height:1.4;
+    border-top: 1px solid var(--line); padding-top: 7px; margin-top: 2px;
+  }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position: fixed; inset:0; background: rgba(0,0,0,0.55); z-index: 50;
+    opacity:0; pointer-events:none; transition: opacity .25s ease;
+  }
+  .modal-overlay.open{ opacity:1; pointer-events:auto; }
+  .modal-sheet{
+    position: fixed; left:0; right:0; bottom:0; z-index: 51;
+    max-width: 560px; margin: 0 auto;
+    background: var(--bg-elevated);
+    border-top: 1.5px dashed var(--line-strong);
+    border-radius: 18px 18px 0 0;
+    max-height: 90vh; overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform .32s cubic-bezier(.2,.8,.2,1), background .25s ease;
+    padding: 10px 20px calc(28px + env(safe-area-inset-bottom)) 20px;
+  }
+  .modal-sheet.open{ transform: translateY(0); }
+  .sheet-handle{ width: 36px; height: 4px; border-radius: 3px; background: var(--line-strong); margin: 8px auto 16px auto; }
+  .sheet-title{
+    font-family:'Archivo Black', sans-serif;
+    font-size: 18px; margin-bottom: 18px; transform: rotate(-0.6deg); display:inline-block;
+  }
+
+  .field{ margin-bottom: 14px; }
+  .field label{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-dim); font-weight: 600; margin-bottom: 7px;
+  }
+  .field input[type=text], .field input[type=number], .field input[type=url],
+  .field textarea, .field select{
+    width:100%;
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    border-radius: 8px;
+    color: var(--ink);
+    font-family:'Inter', sans-serif;
+    font-size: 14.5px;
+    padding: 12px 13px;
+    outline:none;
+    transition: border-color .15s ease;
+    appearance: none; -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ border-color: var(--accent); border-style: solid; }
+  .field textarea{ resize: vertical; min-height: 60px; font-family:'Inter', sans-serif; }
+  .field select{
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238f8f8a'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 32px;
+  }
+  .row2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .prio-select{ display:flex; gap:10px; }
+  .prio-opt{
+    flex:1;
+    display:flex; align-items:center; justify-content:center; gap:7px;
+    border: 1.5px dashed var(--line-strong);
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 11px 6px;
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-dim);
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .prio-opt .dot{ width:8px; height:8px; border-radius:50%; }
+  .prio-opt.high .dot{ background: var(--danger); }
+  .prio-opt.mid .dot{ background: var(--accent); }
+  .prio-opt.low .dot{ background: var(--accent-2); }
+  .prio-opt.selected{ border-style: solid; color: var(--ink); }
+  .prio-opt.selected.high{ border-color: var(--danger); }
+  .prio-opt.selected.mid{ border-color: var(--accent); }
+  .prio-opt.selected.low{ border-color: var(--accent-2); }
+
+  .img-upload-row{ display:flex; gap: 12px; align-items:flex-start; }
+  .img-preview{
+    width: 72px; height: 72px; border-radius: 8px;
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .img-preview img{ width:100%; height:100%; object-fit:cover; }
+  .img-preview span{ font-family:'IBM Plex Mono', monospace; font-size: 8.5px; color: var(--ink-faint); text-align:center; padding: 0 4px; }
+  .img-actions{ flex:1; display:flex; flex-direction:column; gap:8px; }
+  .file-btn{
+    display:flex; align-items:center; justify-content:center;
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12.5px;
+    color: var(--accent);
+    cursor:pointer; text-align:center; font-weight: 600;
+  }
+  .field input[type=file]{ display:none; }
+  .or-divider{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5px; color: var(--ink-faint); text-align:center; letter-spacing:0.08em; text-transform:uppercase;
+  }
+
+  .submit-btn{
+    width:100%;
+    background: var(--accent);
+    color: var(--bg);
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    padding: 15px;
+    font-family:'Archivo Black', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.01em;
+    cursor:pointer;
+    margin-top: 6px;
+    transition: transform .12s ease;
+  }
+  .submit-btn:active{ transform: scale(0.97) rotate(-0.6deg); }
+  .close-x{
+    position:absolute; top: 16px; right: 18px;
+    width: 30px; height:30px; border-radius: 50%;
+    background: var(--bg-card);
+    border: 1.5px solid var(--line-strong);
+    color: var(--ink-dim);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 15px; cursor:pointer;
+  }
+
+  /* ---------- Koerper Tab ---------- */
+  .profile-hero{
+    display:flex; align-items:center; gap: 14px;
+    padding: 6px 0 22px 0;
+    border-bottom: 1.5px dashed var(--line-strong);
+    margin-bottom: 22px;
+  }
+  .avatar{
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700; font-size: 17px;
+    color: var(--accent);
+    flex-shrink:0;
+  }
+  .profile-name{ font-family:'Archivo Black', sans-serif; font-size: 17px; line-height:1.25; }
+  .profile-age{ font-family:'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink-dim); margin-top: 4px; }
+
+  .stat-row{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 26px; }
+  .stat-card{
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius);
+    padding: 15px 16px;
+  }
+  .stat-card label{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 9.5px; text-transform:uppercase; letter-spacing: 0.1em;
+    color: var(--ink-faint); font-weight: 600; margin-bottom: 8px;
+  }
+  .stat-edit{ display:flex; align-items:baseline; gap: 5px; }
+  .stat-edit input{
+    background:none; border:none; outline:none;
+    color: var(--ink);
+    font-family:'Archivo Black', sans-serif;
+    font-size: 22px;
+    width: 62px; padding:0;
+  }
+  .stat-edit span{ font-family:'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-dim); font-weight: 500; }
+
+  .bmi-card{
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius);
+    padding: 18px 18px 20px 18px;
+    margin-bottom: 26px;
+  }
+  .bmi-top{ display:flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; }
+  .bmi-value{ font-family:'Archivo Black', sans-serif; font-size: 28px; }
+
+  .bmi-cat{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px; font-weight: 600;
+    padding: 5px 11px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .bmi-cat.under{ color: var(--accent-2); background: var(--accent-2-soft); }
+  .bmi-cat.normal{ color: var(--accent); background: var(--accent-soft); }
+  .bmi-cat.over{ color: var(--accent-warn); background: var(--accent-warn-soft); }
+  .bmi-cat.obese{ color: var(--danger); background: var(--danger-soft); }
+
+  .bmi-gauge{ padding-top: 4px; }
+  .bmi-bar-track{
+    position:relative; height: 7px; border-radius: 5px;
+    background: linear-gradient(90deg, var(--accent-2) 0%, var(--accent-2) 22%, var(--accent) 40%, var(--accent) 55%, var(--accent-warn) 72%, var(--danger) 100%);
+    margin-bottom: 8px;
+  }
+  .bmi-marker{
+    position:absolute; top:-4px;
+    width: 3px; height: 15px;
+    background: var(--ink);
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--bg-card);
+    transition: left .3s ease;
+  }
+  .bmi-scale{ display:flex; justify-content: space-between; font-family:'IBM Plex Mono', monospace; font-size: 9.5px; color: var(--ink-faint); }
+
+  .size-section-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; margin-bottom: 14px;
+  }
+  .size-table{
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius);
+    overflow:hidden;
+  }
+  .size-table-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding: 14px 16px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .size-table-row:last-child{ border-bottom: none; }
+  .size-table-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px; color: var(--ink-dim); font-weight: 500;
+    text-transform:uppercase; letter-spacing:0.04em;
+    flex-shrink:0; min-width: 62px;
+  }
+  .size-table-inputs{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .size-chip-input{
+    background: var(--bg);
+    border: 1.5px dashed var(--line-strong);
+    color: var(--accent);
+    font-family:'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    width: 54px;
+    text-align: center;
+    outline: none;
+    appearance: none; -webkit-appearance: none;
+    transition: border-color .15s ease;
+  }
+  .size-chip-input:focus{ border-color: var(--accent); border-style: solid; }
+
+  /* ---------- Bottom Nav ---------- */
+  .bottom-nav{
+    position: fixed; bottom:0; left:0; right:0; z-index: 30;
+    max-width: 560px; margin: 0 auto;
+    background: var(--bg);
+    border-top: 1.5px dashed var(--line-strong);
+    display:flex;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+    transition: background .25s ease, border-color .25s ease;
+  }
+  .nav-btn{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    background:none; border:none;
+    color: var(--ink-faint);
+    padding: 6px 0 2px 0;
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: color .15s ease;
+    position: relative;
+  }
+  .nav-btn.active{ color: var(--accent); }
+  .nav-btn.active::after{
+    content:'';
+    position:absolute; bottom:-8px; left:50%; transform: translateX(-50%);
+    width: 22px; height: 2.5px; background: var(--accent); border-radius: 2px;
+  }
+  .nav-btn svg{ width:21px; height:21px; }
+  .nav-btn .ic{ stroke: currentColor; fill:none; stroke-width:1.6; }
+
+  @media (min-width:560px){
+    body{ background: var(--bg); }
+    #app{ box-shadow: 0 0 60px rgba(0,0,0,0.35); }
+  }
+
+  /* ---------- Splash / Loading Screen ---------- */
+  .splash-screen{
+    position: fixed; inset:0; z-index: 200;
+    background: var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: 16px;
+    transition: opacity .4s ease, visibility .4s ease;
+  }
+  .splash-screen.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+  .splash-hole{
+    width:16px; height:16px; border-radius:50%;
+    border: 1.5px dashed var(--line-strong);
+    margin-bottom: -4px;
+  }
+  .splash-logo{
+    font-family:'Archivo Black', sans-serif;
+    font-size: 34px;
+    color: var(--accent);
+    transform: rotate(-1.5deg);
+  }
+  .splash-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .splash-loader{
+    width: 116px; height: 3px; border-radius: 3px;
+    background: var(--line);
+    overflow:hidden;
+    margin-top: 8px;
+  }
+  .splash-loader-bar{
+    width: 0%; height:100%;
+    background: var(--accent);
+    border-radius: 3px;
+    animation: splashFill 0.85s ease forwards;
+  }
+  @keyframes splashFill{
+    0%{ width: 0%; }
+    70%{ width: 92%; }
+    100%{ width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="splash-screen" id="splashScreen">
+  <div class="splash-hole"></div>
+  <div class="splash-logo">FITS.</div>
+  <div class="splash-sub">Persönliches Fit-Archiv</div>
+  <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+</div>
+
+<div id="app">
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-block">
+        <div class="brand">FITS.</div>
+        <div class="brand-sub">Persönliches Fit-Archiv</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Theme wechseln">
+          <span class="tt-icon">☀</span>
+          <span class="tt-icon">☾</span>
+          <span class="tt-knob"></span>
+        </button>
+        <button class="add-btn" id="openAddModalBtn" aria-label="Item hinzufügen">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WISHLIST -->
+  <section class="view active" id="view-wishlist">
+    <div class="section-label" id="wishlistCount">Wishlist</div>
+
+    <div class="search-bar-wrap">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" class="search-input" id="wishlistSearch" placeholder="Nach Namen suchen..." autocomplete="off">
+      <div class="search-clear" id="searchClearBtn">✕</div>
+    </div>
+
+    <div id="wishlistEmpty" class="empty-state">
+      <div class="glyph">F.</div>
+      <h3>Noch nichts gespeichert</h3>
+      <p>Tippe oben rechts auf „+", um dein erstes Piece zur Wishlist hinzuzufügen.</p>
+    </div>
+    <div class="grid" id="wishlistGrid"></div>
+  </section>
+
+  <!-- KOERPER -->
+  <section class="view" id="view-koerper">
+    <div class="profile-hero">
+      <div class="avatar">NJ</div>
+      <div>
+        <div class="profile-name">Niculin Jörimann</div>
+        <div class="profile-age">17 Jahre</div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <label>Grösse</label>
+        <div class="stat-edit"><input type="number" id="heightInput" value="194"><span>cm</span></div>
+      </div>
+      <div class="stat-card">
+        <label>Gewicht</label>
+        <div class="stat-edit"><input type="number" id="weightInput" value="83"><span>kg</span></div>
+      </div>
+    </div>
+
+    <div class="bmi-card">
+      <div class="bmi-top">
+        <div>
+          <div class="bmi-value" id="bmiValue">--</div>
+          <div class="mono" style="font-size:10.5px;color:var(--ink-faint);margin-top:3px;text-transform:uppercase;letter-spacing:0.06em;">Body-Mass-Index</div>
+        </div>
+        <div class="bmi-cat" id="bmiCat">—</div>
+      </div>
+      <div class="bmi-gauge">
+        <div class="bmi-bar-track">
+          <div class="bmi-marker" id="bmiMarker" style="left:50%;"></div>
+        </div>
+        <div class="bmi-scale">
+          <span>16</span><span>18.5</span><span>25</span><span>30</span><span>40</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="size-section-title">Grössentabelle</div>
+    <div class="size-table">
+      <div class="size-table-row">
+        <div class="size-table-label">Shirt</div>
+        <div class="size-table-inputs">
+          <input type="text" class="size-chip-input" data-cat="shirt" data-idx="0" value="M">
+          <input type="text" class="size-chip-input" data-cat="shirt" data-idx="1" value="L">
+        </div>
+      </div>
+      <div class="size-table-row">
+        <div class="size-table-label">Hoodie</div>
+        <div class="size-table-inputs">
+          <input type="text" class="size-chip-input" data-cat="hoodie" data-idx="0" value="M">
+          <input type="text" class="size-chip-input" data-cat="hoodie" data-idx="1" value="L">
+        </div>
+      </div>
+      <div class="size-table-row">
+        <div class="size-table-label">Jacke</div>
+        <div class="size-table-inputs">
+          <input type="text" class="size-chip-input" data-cat="jacke" data-idx="0" value="M">
+          <input type="text" class="size-chip-input" data-cat="jacke" data-idx="1" value="L">
+        </div>
+      </div>
+      <div class="size-table-row">
+        <div class="size-table-label">Hose</div>
+        <div class="size-table-inputs">
+          <input type="text" class="size-chip-input" data-cat="hose" data-idx="0" value="38">
+          <input type="text" class="size-chip-input" data-cat="hose" data-idx="1" value="40">
+        </div>
+      </div>
+      <div class="size-table-row">
+        <div class="size-table-label">Schuhe</div>
+        <div class="size-table-inputs">
+          <input type="text" class="size-chip-input" data-cat="schuhe" data-idx="0" value="46">
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="navWishlist" data-view="view-wishlist">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.8-9.1C.7 8 2.3 4.6 5.6 4c2.1-.4 4 .6 6.4 3 2.4-2.4 4.3-3.4 6.4-3 3.3.6 4.9 4 3.4 7.4C19.5 15.9 12 20.5 12 20.5Z"/></svg>
+    <span>Wishlist</span>
+  </button>
+  <button class="nav-btn" id="navKoerper" data-view="view-koerper">
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.4"/><path d="M4.5 20.5c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7"/></svg>
+    <span>Körper</span>
+  </button>
+</nav>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay"></div>
+<div class="modal-sheet" id="modalSheet">
+  <div class="close-x" id="closeModalBtn">✕</div>
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">Neues Piece</div>
+
+  <form id="itemForm">
+    <div class="field">
+      <label>Bild</label>
+      <div class="img-upload-row">
+        <div class="img-preview" id="imgPreview"><span>Kein Bild</span></div>
+        <div class="img-actions">
+          <label class="file-btn" for="fileInput">Aus Galerie wählen</label>
+          <input type="file" id="fileInput" accept="image/*">
+          <div class="or-divider">oder</div>
+          <input type="url" id="imgUrlInput" placeholder="Bild-URL einfügen">
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Marke</label>
+        <input type="text" id="brandInput" placeholder="z.B. Stüssy" required>
+      </div>
+      <div class="field">
+        <label>Grösse</label>
+        <input type="text" id="sizeInput" placeholder="z.B. L / 45">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Name / Modell</label>
+      <input type="text" id="nameInput" placeholder="z.B. 8-Ball Hoodie" required>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Preis (CHF)</label>
+        <input type="number" id="priceInput" placeholder="0" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Kategorie</label>
+        <select id="categoryInput">
+          <option value="Schuhe">Schuhe</option>
+          <option value="Shirt">Shirt</option>
+          <option value="Hoodie">Hoodie</option>
+          <option value="Hose">Hose</option>
+          <option value="Jacke">Jacke</option>
+          <option value="Accessoire">Accessoire</option>
+          <option value="Sonstiges">Sonstiges</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Priorität</label>
+      <div class="prio-select" id="prioSelect">
+        <div class="prio-opt high" data-prio="Hoch"><span class="dot"></span>Hoch</div>
+        <div class="prio-opt mid selected" data-prio="Mittel"><span class="dot"></span>Mittel</div>
+        <div class="prio-opt low" data-prio="Niedrig"><span class="dot"></span>Niedrig</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Notiz</label>
+      <textarea id="noteInput" placeholder="z.B. warten auf Restock, Grösse checken..."></textarea>
+    </div>
+
+    <button type="submit" class="submit-btn">Zur Wishlist hinzufügen</button>
+  </form>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------- Storage ---------------- */
+  const LS_WISHLIST = 'fits_wishlist';
+  const LS_BODY = 'fits_body';
+  const LS_SIZES = 'fits_sizes';
+  const LS_THEME = 'fits_theme';
+
+  function loadWishlist(){
+    try{ return JSON.parse(localStorage.getItem(LS_WISHLIST)) || []; }
+    catch(e){ return []; }
+  }
+  function saveWishlist(items){
+    localStorage.setItem(LS_WISHLIST, JSON.stringify(items));
+  }
+  function loadBody(){
+    try{ return JSON.parse(localStorage.getItem(LS_BODY)) || {height:194, weight:83}; }
+    catch(e){ return {height:194, weight:83}; }
+  }
+  function saveBody(data){
+    localStorage.setItem(LS_BODY, JSON.stringify(data));
+  }
+  function loadSizes(){
+    try{ return JSON.parse(localStorage.getItem(LS_SIZES)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveSizes(data){
+    localStorage.setItem(LS_SIZES, JSON.stringify(data));
+  }
+
+  let wishlist = loadWishlist();
+  let bodyData = loadBody();
+  let sizesData = loadSizes();
+  let pendingImage = null; // data URL or remote URL currently staged in modal
+  let selectedPrio = 'Mittel';
+  let searchQuery = '';
+
+  /* ---------------- Theme toggle ---------------- */
+  const rootEl = document.documentElement;
+  const themeToggle = document.getElementById('themeToggle');
+
+  function getPreferredTheme(){
+    const saved = localStorage.getItem(LS_THEME);
+    if(saved === 'light' || saved === 'dark') return saved;
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  function applyTheme(theme){
+    rootEl.setAttribute('data-theme', theme);
+    themeToggle.classList.toggle('is-light', theme === 'light');
+    localStorage.setItem(LS_THEME, theme);
+  }
+  let currentTheme = getPreferredTheme();
+  applyTheme(currentTheme);
+  themeToggle.addEventListener('click', function(){
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(currentTheme);
+  });
+
+  /* ---------------- Tabs ---------------- */
+  const navBtns = document.querySelectorAll('.nav-btn');
+  navBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      navBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      document.getElementById(btn.dataset.view).classList.add('active');
+    });
+  });
+
+  /* ---------------- Modal control ---------------- */
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalSheet = document.getElementById('modalSheet');
+  const itemForm = document.getElementById('itemForm');
+
+  function openModal(){
+    resetForm();
+    modalOverlay.classList.add('open');
+    modalSheet.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(){
+    modalOverlay.classList.remove('open');
+    modalSheet.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.getElementById('openAddModalBtn').addEventListener('click', openModal);
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', closeModal);
+
+  function resetForm(){
+    itemForm.reset();
+    pendingImage = null;
+    selectedPrio = 'Mittel';
+    document.querySelectorAll('.prio-opt').forEach(o=>{
+      o.classList.toggle('selected', o.dataset.prio === 'Mittel');
+    });
+    document.getElementById('imgPreview').innerHTML = '<span>Kein Bild</span>';
+  }
+
+  /* ---------------- Priority selector ---------------- */
+  document.querySelectorAll('.prio-opt').forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      document.querySelectorAll('.prio-opt').forEach(o=>o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedPrio = opt.dataset.prio;
+    });
+  });
+
+  /* ---------------- Image handling ---------------- */
+  const fileInput = document.getElementById('fileInput');
+  const imgUrlInput = document.getElementById('imgUrlInput');
+  const imgPreview = document.getElementById('imgPreview');
+
+  fileInput.addEventListener('change', function(e){
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      pendingImage = ev.target.result;
+      imgUrlInput.value = '';
+      renderImgPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  imgUrlInput.addEventListener('input', function(){
+    const val = imgUrlInput.value.trim();
+    if(val){
+      pendingImage = val;
+      fileInput.value = '';
+      renderImgPreview();
+    } else if(!fileInput.files.length){
+      pendingImage = null;
+      imgPreview.innerHTML = '<span>Kein Bild</span>';
+    }
+  });
+
+  function renderImgPreview(){
+    if(pendingImage){
+      imgPreview.innerHTML = '<img src="'+ pendingImage +'" alt="Vorschau">';
+    } else {
+      imgPreview.innerHTML = '<span>Kein Bild</span>';
+    }
+  }
+
+  /* ---------------- Prio classes ---------------- */
+  const prioClass = { 'Hoch':'high', 'Mittel':'mid', 'Niedrig':'low' };
+
+  /* ---------------- Form submit ---------------- */
+  itemForm.addEventListener('submit', function(e){
+    e.preventDefault();
+
+    const brand = document.getElementById('brandInput').value.trim();
+    const name = document.getElementById('nameInput').value.trim();
+    if(!brand || !name) return;
+
+    const item = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+      brand: brand,
+      name: name,
+      price: document.getElementById('priceInput').value,
+      size: document.getElementById('sizeInput').value.trim(),
+      category: document.getElementById('categoryInput').value,
+      priority: selectedPrio,
+      note: document.getElementById('noteInput').value.trim(),
+      image: pendingImage
+    };
+
+    wishlist.unshift(item);
+    saveWishlist(wishlist);
+    renderWishlist();
+    closeModal();
+  });
+
+  /* ---------------- Search ---------------- */
+  const wishlistSearchInput = document.getElementById('wishlistSearch');
+  const searchClearBtn = document.getElementById('searchClearBtn');
+
+  wishlistSearchInput.addEventListener('input', function(){
+    searchQuery = wishlistSearchInput.value.trim().toLowerCase();
+    searchClearBtn.classList.toggle('show', searchQuery.length > 0);
+    renderWishlist();
+  });
+
+  searchClearBtn.addEventListener('click', function(){
+    wishlistSearchInput.value = '';
+    searchQuery = '';
+    searchClearBtn.classList.remove('show');
+    renderWishlist();
+    wishlistSearchInput.focus();
+  });
+
+  /* ---------------- Render wishlist ---------------- */
+  const wishlistGrid = document.getElementById('wishlistGrid');
+  const wishlistEmpty = document.getElementById('wishlistEmpty');
+  const wishlistCount = document.getElementById('wishlistCount');
+
+  function escapeHtml(str){
+    if(!str) return '';
+    return str.replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function renderWishlist(){
+    wishlistGrid.innerHTML = '';
+
+    const filtered = searchQuery
+      ? wishlist.filter(item => (item.name || '').toLowerCase().includes(searchQuery))
+      : wishlist;
+
+    if(wishlist.length === 0){
+      wishlistEmpty.style.display = 'block';
+      wishlistGrid.style.display = 'none';
+      wishlistCount.textContent = 'Wishlist';
+      wishlistEmpty.querySelector('.glyph').textContent = 'F.';
+      wishlistEmpty.querySelector('h3').textContent = 'Noch nichts gespeichert';
+      wishlistEmpty.querySelector('p').textContent = 'Tippe oben rechts auf „+", um dein erstes Piece zur Wishlist hinzuzufügen.';
+      return;
+    }
+
+    if(filtered.length === 0){
+      wishlistEmpty.style.display = 'block';
+      wishlistGrid.style.display = 'none';
+      wishlistCount.textContent = 'Wishlist · ' + wishlist.length;
+      wishlistEmpty.querySelector('.glyph').textContent = 'F.';
+      wishlistEmpty.querySelector('h3').textContent = 'Kein Treffer';
+      wishlistEmpty.querySelector('p').textContent = 'Es wurde kein Piece mit diesem Namen gefunden.';
+      return;
+    }
+
+    wishlistEmpty.style.display = 'none';
+    wishlistGrid.style.display = 'grid';
+    wishlistCount.textContent = searchQuery
+      ? 'Wishlist · ' + filtered.length + ' / ' + wishlist.length
+      : 'Wishlist · ' + wishlist.length;
+
+    filtered.forEach(item=>{
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const priceStr = item.price ? ('CHF ' + Number(item.price).toFixed(2)) : '';
+      const sizeStr = item.size ? item.size : '—';
+      const pClass = prioClass[item.priority] || 'mid';
+
+      card.innerHTML = `
+        <div class="tag-hole"></div>
+        <div class="card-img-wrap ${item.image ? '' : 'noimg'}">
+          ${item.image ? `<img src="${item.image}" alt="${escapeHtml(item.name)}">` : `<span>Kein Bild</span>`}
+          <div class="badge">${escapeHtml(item.category)}</div>
+          <div class="prio-dot ${pClass}"></div>
+          <div class="del-btn" data-id="${item.id}">✕</div>
+        </div>
+        <div class="card-body">
+          <div class="card-brand">${escapeHtml(item.brand)}</div>
+          <div class="card-name">${escapeHtml(item.name)}</div>
+          <div class="card-meta">
+            <span class="card-price">${priceStr}</span>
+            <span>${escapeHtml(sizeStr)}</span>
+          </div>
+          ${item.note ? `<div class="card-note">${escapeHtml(item.note)}</div>` : ``}
+        </div>
+      `;
+      wishlistGrid.appendChild(card);
+    });
+
+    document.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        wishlist = wishlist.filter(it => it.id !== id);
+        saveWishlist(wishlist);
+        renderWishlist();
+      });
+    });
+  }
+
+  /* ---------------- Koerper / BMI ---------------- */
+  const heightInput = document.getElementById('heightInput');
+  const weightInput = document.getElementById('weightInput');
+  const bmiValue = document.getElementById('bmiValue');
+  const bmiCat = document.getElementById('bmiCat');
+  const bmiMarker = document.getElementById('bmiMarker');
+
+  heightInput.value = bodyData.height;
+  weightInput.value = bodyData.weight;
+
+  function bmiCategory(bmi){
+    if(bmi < 18.5) return {label:'Untergewicht', cls:'under'};
+    if(bmi < 25) return {label:'Normalgewicht', cls:'normal'};
+    if(bmi < 30) return {label:'Übergewicht', cls:'over'};
+    return {label:'Adipositas', cls:'obese'};
+  }
+
+  function renderBMI(){
+    const h = parseFloat(heightInput.value) || 0;
+    const w = parseFloat(weightInput.value) || 0;
+    if(h <= 0 || w <= 0){
+      bmiValue.textContent = '--';
+      bmiCat.textContent = '—';
+      bmiCat.className = 'bmi-cat';
+      return;
+    }
+    const hM = h / 100;
+    const bmi = w / (hM * hM);
+    bmiValue.textContent = bmi.toFixed(1);
+    const cat = bmiCategory(bmi);
+    bmiCat.textContent = cat.label;
+    bmiCat.className = 'bmi-cat ' + cat.cls;
+
+    // Map bmi range 16-40 to 0-100%
+    let pct = ((bmi - 16) / (40 - 16)) * 100;
+    pct = Math.max(1, Math.min(99, pct));
+    bmiMarker.style.left = pct + '%';
+  }
+
+  function persistBody(){
+    bodyData = {
+      height: heightInput.value,
+      weight: weightInput.value
+    };
+    saveBody(bodyData);
+  }
+
+  heightInput.addEventListener('input', function(){ renderBMI(); persistBody(); });
+  weightInput.addEventListener('input', function(){ renderBMI(); persistBody(); });
+
+  /* ---------------- Editierbare Grössen ---------------- */
+  function initSizeInputs(){
+    document.querySelectorAll('.size-chip-input').forEach(function(input){
+      const key = input.dataset.cat + '-' + input.dataset.idx;
+      if(sizesData[key] !== undefined){
+        input.value = sizesData[key];
+      } else {
+        sizesData[key] = input.value;
+      }
+      input.addEventListener('input', function(){
+        sizesData[key] = input.value;
+        saveSizes(sizesData);
+      });
+    });
+    saveSizes(sizesData);
+  }
+
+  /* ---------------- Init ---------------- */
+  renderWishlist();
+  renderBMI();
+  initSizeInputs();
+
+  /* ---------------- Splash Screen ---------------- */
+  const splashScreen = document.getElementById('splashScreen');
+  if(splashScreen){
+    setTimeout(function(){
+      splashScreen.classList.add('hide');
+      setTimeout(function(){ splashScreen.remove(); }, 450);
+    }, 900);
+  }
+
+})();
+</script>
+</body>
+</html>
