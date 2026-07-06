@@ -656,6 +656,84 @@
     70%{ width: 92%; }
     100%{ width: 100%; }
   }
+
+  /* ---------- Lock / Passwort Screen ---------- */
+  .lock-screen{
+    position: fixed; inset:0; z-index: 300;
+    background: var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: 16px;
+    padding: 24px;
+    transition: opacity .4s ease, visibility .4s ease;
+  }
+  .lock-screen.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+  .lock-hole{
+    width:16px; height:16px; border-radius:50%;
+    border: 1.5px dashed var(--line-strong);
+    margin-bottom: -4px;
+  }
+  .lock-logo{
+    font-family:'Archivo Black', sans-serif;
+    font-size: 34px;
+    color: var(--accent);
+    transform: rotate(-1.5deg);
+  }
+  .lock-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .lock-form{
+    width:100%; max-width: 280px;
+    display:flex; flex-direction:column; gap: 12px;
+    margin-top: 10px;
+  }
+  .lock-input{
+    width:100%;
+    background: var(--bg-card);
+    border: 1.5px dashed var(--line-strong);
+    border-radius: 8px;
+    color: var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 14.5px;
+    letter-spacing: 0.1em;
+    text-align:center;
+    padding: 13px 14px;
+    outline:none;
+    transition: border-color .15s ease;
+  }
+  .lock-input::placeholder{ color: var(--ink-faint); letter-spacing: 0.02em; }
+  .lock-input:focus{ border-color: var(--accent); border-style: solid; }
+  .lock-input.error{ border-color: var(--danger); border-style: solid; animation: lockShake .3s ease; }
+  @keyframes lockShake{
+    0%,100%{ transform: translateX(0); }
+    25%{ transform: translateX(-6px); }
+    75%{ transform: translateX(6px); }
+  }
+  .lock-btn{
+    width:100%;
+    background: var(--accent);
+    color: var(--bg);
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    padding: 14px;
+    font-family:'Archivo Black', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    cursor:pointer;
+    transition: transform .12s ease;
+  }
+  .lock-btn:active{ transform: scale(0.97) rotate(-0.6deg); }
+  .lock-error-msg{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--danger);
+    text-align:center;
+    letter-spacing: 0.04em;
+    min-height: 14px;
+  }
 </style>
 </head>
 <body>
@@ -665,6 +743,17 @@
   <div class="splash-logo">FITS.</div>
   <div class="splash-sub">Persönliches Fit-Archiv</div>
   <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+</div>
+
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-hole"></div>
+  <div class="lock-logo">FITS.</div>
+  <div class="lock-sub">Zugang geschützt</div>
+  <form class="lock-form" id="lockForm" autocomplete="off">
+    <input type="password" class="lock-input" id="lockPasswordInput" placeholder="Passwort eingeben" autocomplete="new-password" autocapitalize="off" spellcheck="false">
+    <button type="submit" class="lock-btn">Entsperren</button>
+    <div class="lock-error-msg" id="lockErrorMsg"></div>
+  </form>
 </div>
 
 <div id="app">
@@ -1232,5 +1321,42 @@
 
 })();
 </script>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------- Passwort-Sperre ---------------- */
+  const CORRECT_PASSWORD = 'fitsmakehappy';
+
+  const lockScreen = document.getElementById('lockScreen');
+  const lockForm = document.getElementById('lockForm');
+  const lockInput = document.getElementById('lockPasswordInput');
+  const lockError = document.getElementById('lockErrorMsg');
+
+  if(!lockScreen || !lockForm || !lockInput) return;
+
+  lockForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const val = (lockInput.value || '').trim().toLowerCase();
+
+    if(val === CORRECT_PASSWORD){
+      lockError.textContent = '';
+      lockScreen.classList.add('hide');
+      setTimeout(function(){
+        if(lockScreen.parentNode){ lockScreen.parentNode.removeChild(lockScreen); }
+      }, 450);
+    } else {
+      lockError.textContent = 'Falsches Passwort — nochmal versuchen.';
+      lockInput.classList.add('error');
+      lockInput.value = '';
+      setTimeout(function(){ lockInput.classList.remove('error'); }, 320);
+    }
+  });
+
+  setTimeout(function(){ lockInput.focus(); }, 300);
+})();
+</script>
+
 </body>
 </html>
